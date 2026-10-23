@@ -1,0 +1,10 @@
+{
+  "name": "@fitness/api", "private": true, "version": "0.1.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && node --check server.cjs",
+    "dev": "pnpm build && node --watch server.cjs",
+    "start": "node server.cjs",
+    "test": "pnpm build && node --test server.test.cjs"
+  }
+}

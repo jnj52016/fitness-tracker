@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+*.tsbuildinfo
+*.log
+.npm-cache/
+.corepack/
+.pnpm-store/
+
+apps/api/data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

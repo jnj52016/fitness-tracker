@@ -1,0 +1,26 @@
+openapi: 3.0.3
+info:
+  title: 基础健康检查（历史定义，已停用）
+  version: 0.1.0
+servers:
+  - url: http://127.0.0.1:3000
+paths:
+  /api/health:
+    get:
+      deprecated: true
+      operationId: getHealth
+      summary: 检查 API 是否可访问
+      responses:
+        '200':
+          description: API 正常响应
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+              example:
+                status: ok

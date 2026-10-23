@@ -1,0 +1,184 @@
+openapi: 3.0.3
+info:
+  title: 练就账号与训练数据
+  version: 2.0.0
+servers:
+  - url: /fitness-tracker/api
+security:
+  - session: []
+paths:
+  /health:
+    get:
+      security: []
+      responses:
+        '200': { description: 服务正常 }
+  /register:
+    post:
+      security: []
+      parameters: [ { $ref: '#/components/parameters/origin' } ]
+      requestBody: { $ref: '#/components/requestBodies/credentials' }
+      responses:
+        '200': { $ref: '#/components/responses/user' }
+        '400': { $ref: '#/components/responses/error' }
+        '403': { $ref: '#/components/responses/error' }
+        '409': { $ref: '#/components/responses/error' }
+        '429': { $ref: '#/components/responses/error' }
+  /login:
+    post:
+      security: []
+      parameters: [ { $ref: '#/components/parameters/origin' } ]
+      requestBody: { $ref: '#/components/requestBodies/credentials' }
+      responses:
+        '200': { $ref: '#/components/responses/user' }
+        '400': { $ref: '#/components/responses/error' }
+        '401': { $ref: '#/components/responses/error' }
+        '403': { $ref: '#/components/responses/error' }
+        '429': { $ref: '#/components/responses/error' }
+  /me:
+    get:
+      responses:
+        '200': { $ref: '#/components/responses/user' }
+        '401': { $ref: '#/components/responses/error' }
+  /logout:
+    post:
+      parameters: [ { $ref: '#/components/parameters/origin' } ]
+      responses:
+        '200': { description: 会话已删除并清除 Cookie }
+        '401': { $ref: '#/components/responses/error' }
+        '403': { $ref: '#/components/responses/error' }
+  /data:
+    parameters: [ { $ref: '#/components/parameters/userId' } ]
+    get:
+      responses:
+        '200': { $ref: '#/components/responses/data' }
+        '401': { $ref: '#/components/responses/error' }
+    put:
+      parameters: [ { $ref: '#/components/parameters/origin' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data, expectedRevision]
+              properties:
+                data: { $ref: '#/components/schemas/TrainingData' }
+                expectedRevision: { type: integer, minimum: 0, maximum: 9007199254740990 }
+      responses:
+        '200': { $ref: '#/components/responses/data' }
+        '400': { $ref: '#/components/responses/error' }
+        '401': { $ref: '#/components/responses/error' }
+        '403': { $ref: '#/components/responses/error' }
+        '409': { $ref: '#/components/responses/error' }
+        '413': { $ref: '#/components/responses/error' }
+        '415': { $ref: '#/components/responses/error' }
+components:
+  securitySchemes:
+    session: { type: apiKey, in: cookie, name: fitness_session }
+  parameters:
+    origin: { name: Origin, in: header, required: true, schema: { type: string }, description: 必须匹配 APP_ORIGIN，浏览器自动提供 }
+    userId: { name: X-User-Id, in: header, required: true, schema: { type: string }, description: 登录用户 id，服务端校验与 Cookie 一致 }
+  requestBodies:
+    credentials:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [username, password]
+            properties:
+              username: { type: string, pattern: '^[a-zA-Z0-9_]{3,32}$' }
+              password: { type: string, minLength: 8, maxLength: 128, format: password }
+  responses:
+    user:
+      description: 用户资料；注册或登录同时设置会话 Cookie
+      headers:
+        Set-Cookie: { schema: { type: string }, description: 仅注册或登录返回 }
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [id, username]
+            properties:
+              id: { type: integer }
+              username: { type: string }
+    data:
+      description: 当前账号完整训练数据
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/TrainingData' }
+    error:
+      description: 请求失败，message 为中文原因
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [message]
+            properties:
+              message: { type: string }
+  schemas:
+    TrainingData:
+      type: object
+      required: [version, revision, chosen, current, configs, counts, startedAt, history, legB, legNext, round, frequency]
+      properties:
+        version: { type: integer, enum: [2] }
+        legNext: { type: string, enum: [A, B] }
+        round: { type: integer, minimum: 1, maximum: 1000000 }
+        frequency:
+          type: object
+          required: [chest, abs]
+          properties:
+            chest: { type: string, enum: [every, alternate] }
+            abs: { type: string, enum: [every, alternate] }
+        legB:
+          type: array
+          description: 腿臀 B，configs[2] 为腿臀 A
+          items:
+            type: object
+            required: [id, sets]
+            properties:
+              id: { type: string, description: 对应腿臀动作且不重复 }
+              sets: { type: integer, minimum: 1, maximum: 20 }
+        revision: { type: integer, minimum: 0, maximum: 9007199254740991 }
+        chosen: { type: boolean }
+        current: { type: integer, minimum: 0, maximum: 3 }
+        configs:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            type: array
+            items:
+              type: object
+              required: [id, sets]
+              properties:
+                id: { type: string, description: 必须为对应分化中的有效动作且不能重复 }
+                sets: { type: integer, minimum: 1, maximum: 20 }
+        counts:
+          type: object
+          description: 已选动作 id 到完成组数，不得超过对应目标
+          additionalProperties: { type: integer, minimum: 0, maximum: 20 }
+        startedAt: { type: string, format: date-time, nullable: true }
+        history:
+          type: array
+          maxItems: 10000
+          items:
+            type: object
+            required: [id, day, date, startedAt, endedAt, exercises]
+            properties:
+              id: { type: string, pattern: '^[a-zA-Z0-9-]{1,80}$', description: 历史内唯一 }
+              legVariant: { type: string, enum: [A, B], description: 仅腿臀历史记录允许，旧记录可不提供 }
+              day: { type: integer, minimum: 0, maximum: 3 }
+              date: { type: string, format: date }
+              startedAt: { type: string, format: date-time }
+              endedAt: { type: string, format: date-time, description: 不早于 startedAt }
+              exercises:
+                type: array
+                items:
+                  type: object
+                  required: [id, target, completed]
+                  properties:
+                    id: { type: string }
+                    name: { type: string, description: 服务器根据动作 id 重建名称 }
+                    target: { type: integer, minimum: 1, maximum: 20 }
+                    completed: { type: integer, minimum: 0, maximum: 20, description: 不得超过 target }
